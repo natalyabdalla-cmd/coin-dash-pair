@@ -72,11 +72,16 @@ class CoinDash extends Phaser.Scene {
     this.paused = !this.paused;
     if (this.paused) {
       // Freeze the countdown by remembering how much time was left.
+      // The hit grace period and its blink freeze the same way.
       this.remaining = this.deadline - this.time.now;
+      this.graceRemaining = Math.max(0, this.invulnerableUntil - this.time.now);
       this.physics.pause();
+      this.tweens.pauseAll();
     } else {
       this.deadline = this.time.now + this.remaining;
+      this.invulnerableUntil = this.time.now + this.graceRemaining;
       this.physics.resume();
+      this.tweens.resumeAll();
     }
     this.pauseOverlay.setVisible(this.paused);
   }
