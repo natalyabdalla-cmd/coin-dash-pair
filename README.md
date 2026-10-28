@@ -1,6 +1,6 @@
 # Coin Dash — Lab 3 starter
 
-Collect coins, avoid drones, and survive a 45-second round. You start with 3 lives and lose one
+Pick a difficulty with 1 (easy), 2 (medium) or 3 (hard), then collect coins, avoid drones, and survive a 45-second round. You start with 3 lives and lose one
 each time a drone touches you. Move with arrow keys or WASD;
 press P to pause/resume and R to restart. This is deliberately small so you can add features during the lab.
 

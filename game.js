@@ -7,10 +7,10 @@ class CoinDash extends Phaser.Scene {
     this.score = 0;
     this.lives = c.lives;
     this.invulnerableUntil = 0;
+    this.started = false;
     this.finished = false;
     this.paused = false;
     this.best = loadBest();
-    this.deadline = this.time.now + c.roundSeconds * 1000;
     this.physics.world.setBounds(0, 44, c.width, c.height - 44);
     this.add.grid(c.width / 2, c.height / 2, c.width, c.height, 40, 40,
       c.colors.background, 1, 0x24334b, 0.45);
@@ -27,11 +27,10 @@ class CoinDash extends Phaser.Scene {
       const drone = this.add.rectangle(90 + i * 270, 100, 26, 26, c.colors.drone);
       this.drones.add(drone);
       drone.body.setCollideWorldBounds(true).setBounce(1, 1);
-      const angle = (35 + i * 105) * Math.PI / 180;
-      drone.body.setVelocity(Math.cos(angle) * c.droneSpeed, Math.sin(angle) * c.droneSpeed);
+      drone.angle0 = (35 + i * 105) * Math.PI / 180;
     }
     this.physics.add.overlap(this.player, this.coin, () => {
-      if (this.finished) return;
+      if (!this.started || this.finished) return;
       this.score++;
       this.placeCoin();
     });
@@ -45,10 +44,31 @@ class CoinDash extends Phaser.Scene {
       this.add.text(0, 0, 'Paused\nPress P to resume',
         { font: '24px monospace', color: '#ffffff', align: 'center', lineSpacing: 12 }).setOrigin(0.5)
     ]).setVisible(false).setDepth(10);
+    this.difficultyMenu = this.add.container(c.width / 2, c.height / 2, [
+      this.add.rectangle(0, 0, 460, 200, 0x0a1120, 0.95),
+      this.add.text(0, 0,
+        'Choose difficulty\n' + c.difficulties.map((d, i) => `${i + 1} - ${d.name}`).join('\n'),
+        { font: '24px monospace', color: '#ffffff', align: 'center', lineSpacing: 12 }).setOrigin(0.5)
+    ]).setDepth(10);
+    this.hud.setText('Press 1, 2 or 3 to start');
+    this.input.keyboard.on('keydown', (event) => {
+      const level = c.difficulties[Number(event.key) - 1];
+      if (level && !this.started) this.startRound(level);
+    });
+  }
+
+  startRound(level) {
+    const c = COIN_DASH;
+    this.started = true;
+    this.difficulty = level;
+    this.deadline = this.time.now + c.roundSeconds * 1000;
+    this.drones.getChildren().forEach((drone) => drone.body.setVelocity(
+      Math.cos(drone.angle0) * level.droneSpeed, Math.sin(drone.angle0) * level.droneSpeed));
+    this.difficultyMenu.setVisible(false);
   }
 
   togglePause() {
-    if (this.finished) return;
+    if (!this.started || this.finished) return;
     this.paused = !this.paused;
     if (this.paused) {
       // Freeze the countdown by remembering how much time was left.
@@ -75,7 +95,7 @@ class CoinDash extends Phaser.Scene {
 
   loseLife() {
     // Overlap fires every frame while touching, so ignore hits during the grace period.
-    if (this.finished || this.time.now < this.invulnerableUntil) return;
+    if (!this.started || this.finished || this.time.now < this.invulnerableUntil) return;
     this.lives--;
     if (this.lives <= 0) {
       this.finish('A drone caught you!');
@@ -90,7 +110,7 @@ class CoinDash extends Phaser.Scene {
   }
 
   update() {
-    if (this.finished || this.paused) return;
+    if (!this.started || this.finished || this.paused) return;
     const dx = Number(this.cursors.right.isDown || this.keys.D.isDown)
       - Number(this.cursors.left.isDown || this.keys.A.isDown);
     const dy = Number(this.cursors.down.isDown || this.keys.S.isDown)
@@ -99,7 +119,7 @@ class CoinDash extends Phaser.Scene {
     this.player.body.setVelocity(direction.x, direction.y);
     const seconds = Math.max(0, Math.ceil((this.deadline - this.time.now) / 1000));
     const best = Math.max(this.best, this.score);
-    this.hud.setText(`Coins: ${this.score}      Lives: ${this.lives}      Best: ${best}      Time: ${seconds}s`);
+    this.hud.setText(`Coins: ${this.score}    Lives: ${this.lives}    Best: ${best}    Time: ${seconds}s    ${this.difficulty.name}`);
     if (seconds === 0) this.finish('Time is up!');
   }
 
