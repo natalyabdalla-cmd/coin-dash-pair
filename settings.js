@@ -13,5 +13,10 @@ window.COIN_DASH = {
   droneCount: 3,
   lives: 3,
   hitGraceMs: 1500,
-  colors: { background: 0x101c31, player: 0x71e8ce, coin: 0xffd166, drone: 0xff657a }
+  // Hitbox radius stays fixed; spinMs is one full turn of the coin's squash animation.
+  coin: { radius: 9, spinMs: 900 },
+  colors: {
+    background: 0x101c31, player: 0x71e8ce, drone: 0xff657a,
+    coin: 0xf5c542, coinRim: 0xb07d12, coinShine: 0xfff4c2
+  }
 };

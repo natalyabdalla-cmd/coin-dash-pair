@@ -18,9 +18,18 @@ class CoinDash extends Phaser.Scene {
     this.player = this.add.rectangle(c.width / 2, c.height / 2, 24, 24, c.colors.player);
     this.physics.add.existing(this.player);
     this.player.body.setCollideWorldBounds(true);
-    this.coin = this.add.circle(100, 100, 9, c.colors.coin);
+    // The hitbox is an invisible circle; the spinning gold image just follows it,
+    // so squashing the image's scaleX never changes the physics body.
+    this.coin = this.add.circle(100, 100, c.coin.radius, c.colors.coin).setVisible(false);
     this.physics.add.existing(this.coin);
-    this.coin.body.setCircle(9);
+    this.coin.body.setCircle(c.coin.radius);
+    makeCoinTexture(this, c.coin.radius + 2);
+    this.coinImage = this.add.image(100, 100, 'coin');
+    // Squash horizontally and back to fake a 3D spin.
+    this.tweens.add({
+      targets: this.coinImage, scaleX: 0.1, duration: c.coin.spinMs / 2,
+      ease: 'Sine.easeInOut', yoyo: true, repeat: -1
+    });
     this.placeCoin();
     this.drones = this.physics.add.group();
     for (let i = 0; i < c.droneCount; i++) {
@@ -91,6 +100,7 @@ class CoinDash extends Phaser.Scene {
     } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 60);
     this.coin.setPosition(x, y);
     this.coin.body.reset(x, y);
+    this.coinImage.setPosition(x, y);
   }
 
   loseLife() {
@@ -139,6 +149,18 @@ class CoinDash extends Phaser.Scene {
       { font: '24px monospace', color: '#ffffff', align: 'center', lineSpacing: 12 }
     ).setOrigin(0.5);
   }
+}
+// Draw the gold coin once into a texture: dark rim, gold face, inner ring and shine.
+function makeCoinTexture(scene, r) {
+  if (scene.textures.exists('coin')) return;
+  const colors = COIN_DASH.colors;
+  const g = scene.make.graphics({ add: false });
+  g.fillStyle(colors.coinRim).fillCircle(r, r, r);
+  g.fillStyle(colors.coin).fillCircle(r, r, r - 2);
+  g.lineStyle(1, colors.coinRim).strokeCircle(r, r, r - 5);
+  g.fillStyle(colors.coinShine).fillEllipse(r - 3, r - 3, 4, 6);
+  g.generateTexture('coin', r * 2, r * 2);
+  g.destroy();
 }
 // localStorage can be unavailable (e.g. privacy settings), so fail quietly.
 const BEST_KEY = 'coinDash.highScore';
