@@ -18,9 +18,19 @@ class CoinDash extends Phaser.Scene {
     this.player = this.add.rectangle(c.width / 2, c.height / 2, 24, 24, c.colors.player);
     this.physics.add.existing(this.player);
     this.player.body.setCollideWorldBounds(true);
-    this.coin = this.add.circle(100, 100, 9, c.colors.coin);
+    // The coin is an invisible hitbox; the gem visuals live in a container that follows it,
+    // so the pulse tween never touches the physics body.
+    this.coin = this.add.circle(100, 100, 9, 0xffffff, 0);
     this.physics.add.existing(this.coin);
     this.coin.body.setCircle(9);
+    this.makeGemTextures();
+    this.gem = this.add.image(0, 0, 'gem');
+    this.gemFx = this.add.container(100, 100, [this.gem]);
+    this.tweens.add({
+      targets: this.gem, scale: 1.12, duration: c.gemPulseMs,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+    });
+    this.time.addEvent({ delay: c.sparkleEveryMs, loop: true, callback: () => this.sparkle() });
     this.placeCoin();
     this.drones = this.physics.add.group();
     for (let i = 0; i < c.droneCount; i++) {
@@ -96,6 +106,48 @@ class CoinDash extends Phaser.Scene {
     } while (Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) < 60);
     this.coin.setPosition(x, y);
     this.coin.body.reset(x, y);
+    this.gemFx.setPosition(x, y);
+  }
+
+  makeGemTextures() {
+    // Textures are global, so only draw them once (scene.restart runs create again).
+    if (this.textures.exists('gem')) return;
+    const g = COIN_DASH.colors.gem;
+    const P = (x, y) => new Phaser.Math.Vector2(x, y);
+    const gfx = this.add.graphics();
+    // Brilliant cut on a 26x26 canvas: table on top, girdle across, pavilion down to a point.
+    const facets = [
+      [g.light, [P(8, 4), P(18, 4), P(13, 10)]],
+      [g.mid, [P(2, 10), P(8, 4), P(13, 10)]],
+      [g.mid, [P(18, 4), P(24, 10), P(13, 10)]],
+      [g.mid, [P(2, 10), P(13, 10), P(13, 24)]],
+      [g.dark, [P(13, 10), P(24, 10), P(13, 24)]]
+    ];
+    facets.forEach(([color, points]) => gfx.fillStyle(color, 1).fillPoints(points, true));
+    gfx.lineStyle(1.5, g.outline, 1)
+      .strokePoints([P(8, 4), P(18, 4), P(24, 10), P(13, 24), P(2, 10)], true);
+    gfx.generateTexture('gem', 26, 26);
+    // Four-point twinkle star.
+    gfx.clear().fillStyle(g.sparkle, 1).fillPoints([
+      P(5, 0), P(6, 4), P(10, 5), P(6, 6), P(5, 10), P(4, 6), P(0, 5), P(4, 4)
+    ], true);
+    gfx.generateTexture('sparkle', 10, 10);
+    gfx.destroy();
+  }
+
+  sparkle() {
+    // A glint pops in somewhere around the gem, then shrinks and fades away.
+    const angle = Math.random() * Math.PI * 2;
+    const r = Phaser.Math.Between(8, 15);
+    const glint = this.add.image(Math.cos(angle) * r, Math.sin(angle) * r, 'sparkle')
+      .setScale(0.2).setAngle(Phaser.Math.Between(0, 45));
+    this.gemFx.add(glint);
+    this.tweens.add({
+      targets: glint, scale: { from: 0.2, to: 1 }, duration: COIN_DASH.sparkleFadeMs / 2,
+      yoyo: true, ease: 'Sine.easeOut', onComplete: () => glint.destroy()
+    });
+    this.tweens.add({ targets: glint, alpha: 0, delay: COIN_DASH.sparkleFadeMs / 2,
+      duration: COIN_DASH.sparkleFadeMs / 2 });
   }
 
   loseLife() {
