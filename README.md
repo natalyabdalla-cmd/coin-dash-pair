@@ -8,6 +8,7 @@ press R to restart. This is deliberately small so you can add features during th
 ## Team
 
 - Nataly
+- Liam
 
 ## Run it locally
 
