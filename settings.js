@@ -4,7 +4,12 @@ window.COIN_DASH = {
   height: 500,
   roundSeconds: 45,
   playerSpeed: 240,
-  droneSpeed: 105,
+  // Chosen with keys 1, 2, 3 before the round starts.
+  difficulties: [
+    { name: 'Easy', droneSpeed: 70 },
+    { name: 'Medium', droneSpeed: 105 },
+    { name: 'Hard', droneSpeed: 150 }
+  ],
   droneCount: 3,
   lives: 3,
   hitGraceMs: 1500,
