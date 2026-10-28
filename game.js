@@ -42,6 +42,7 @@ class CoinDash extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.coin, () => {
       if (!this.started || this.finished) return;
       this.score++;
+      playTone(880, 0.08, 'square');
       this.placeCoin();
     });
     this.physics.add.overlap(this.player, this.drones, () => this.loseLife());
@@ -49,6 +50,13 @@ class CoinDash extends Phaser.Scene {
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R,P');
     this.input.keyboard.on('keydown-R', () => this.scene.restart());
     this.input.keyboard.on('keydown-P', () => this.togglePause());
+    this.muteText = this.add.text(c.width - 12, c.height - 10, '', { font: '14px monospace', color: '#ffffff' })
+      .setOrigin(1, 1).setDepth(10);
+    this.updateMuteText();
+    this.input.keyboard.on('keydown-M', () => {
+      muted = !muted;
+      this.updateMuteText();
+    });
     this.pauseOverlay = this.add.container(c.width / 2, c.height / 2, [
       this.add.rectangle(0, 0, 460, 120, 0x0a1120, 0.95),
       this.add.text(0, 0, 'Paused\nPress P to resume',
@@ -62,6 +70,7 @@ class CoinDash extends Phaser.Scene {
     ]).setDepth(10);
     this.hud.setText('Press 1, 2 or 3 to start');
     this.input.keyboard.on('keydown', (event) => {
+      unlockAudio();
       const level = c.difficulties[Number(event.key) - 1];
       if (level && !this.started) this.startRound(level);
     });
@@ -75,6 +84,10 @@ class CoinDash extends Phaser.Scene {
     this.drones.getChildren().forEach((drone) => drone.body.setVelocity(
       Math.cos(drone.angle0) * level.droneSpeed, Math.sin(drone.angle0) * level.droneSpeed));
     this.difficultyMenu.setVisible(false);
+  }
+
+  updateMuteText() {
+    this.muteText.setText(muted ? 'Sound: off (M)' : 'Sound: on (M)');
   }
 
   togglePause() {
@@ -159,6 +172,7 @@ class CoinDash extends Phaser.Scene {
       this.finish('A drone caught you!');
       return;
     }
+    playTone(110, 0.25, 'sawtooth');
     this.invulnerableUntil = this.time.now + COIN_DASH.hitGraceMs;
     this.tweens.add({
       targets: this.player, alpha: 0.25, duration: 125, yoyo: true,
@@ -185,6 +199,9 @@ class CoinDash extends Phaser.Scene {
     if (this.finished) return;
     this.finished = true;
     this.physics.pause();
+    playTone(392, 0.25, 'triangle');
+    playTone(294, 0.25, 'triangle', 0.25);
+    playTone(196, 0.5, 'triangle', 0.5);
     const newBest = this.score > this.best;
     if (newBest) {
       this.best = this.score;
@@ -197,6 +214,28 @@ class CoinDash extends Phaser.Scene {
       { font: '24px monospace', color: '#ffffff', align: 'center', lineSpacing: 12 }
     ).setOrigin(0.5);
   }
+}
+// Sound effects are synthesized with the Web Audio API, so no audio files are needed.
+// Kept outside the scene so the mute setting survives a restart.
+let audioCtx = null;
+let muted = false;
+function unlockAudio() {
+  // Browsers only allow audio after a user gesture, so start it from a key press.
+  if (!audioCtx && window.AudioContext) audioCtx = new AudioContext();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playTone(freq, duration, type, delay = 0) {
+  if (muted || !audioCtx) return;
+  const start = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.15, start);
+  gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(start);
+  osc.stop(start + duration);
 }
 // localStorage can be unavailable (e.g. privacy settings), so fail quietly.
 const BEST_KEY = 'coinDash.highScore';
