@@ -30,7 +30,7 @@ class CoinDash extends Phaser.Scene {
       targets: this.gem, scale: 1.12, duration: c.gemPulseMs,
       yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
     });
-    this.time.addEvent({ delay: c.sparkleEveryMs, loop: true, callback: () => this.sparkle() });
+    this.sparkleTimer = this.time.addEvent({ delay: c.sparkleEveryMs, loop: true, callback: () => this.sparkle() });
     this.placeCoin();
     this.drones = this.physics.add.group();
     for (let i = 0; i < c.droneCount; i++) {
@@ -82,7 +82,7 @@ class CoinDash extends Phaser.Scene {
     this.paused = !this.paused;
     if (this.paused) {
       // Freeze the countdown by remembering how much time was left.
-      // The hit grace period and its blink freeze the same way.
+      // The hit grace period and its blink freeze the same way, as do the gem's sparkles.
       this.remaining = this.deadline - this.time.now;
       this.graceRemaining = Math.max(0, this.invulnerableUntil - this.time.now);
       this.physics.pause();
@@ -93,6 +93,7 @@ class CoinDash extends Phaser.Scene {
       this.physics.resume();
       this.tweens.resumeAll();
     }
+    this.sparkleTimer.paused = this.paused;
     this.pauseOverlay.setVisible(this.paused);
   }
 
